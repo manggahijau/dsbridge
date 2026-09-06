@@ -352,7 +352,15 @@ static void *client_thread(void *arg) {
 int main(int argc, char **argv) {
     signal(SIGPIPE, SIG_IGN);
 
-    const char *libPath = (argc > 1) ? argv[1] : "/system/vendor/lib/soundfx/libdseffect.so";
+    /* NOTE: default path deliberately points under the module's own /data
+     * directory copy, NOT the systemless-mounted /system/vendor/... path --
+     * running this binary standalone (outside app_process/zygote) is
+     * subject to Android's linker namespace path allowlist, which permits
+     * /data but does NOT permit arbitrary /vendor/lib/... paths. Always
+     * invoke with an explicit argument in production (service.sh does this
+     * correctly); this default only exists so ad-hoc manual testing doesn't
+     * silently hit the namespace restriction. */
+    const char *libPath = (argc > 1) ? argv[1] : "/data/adb/modules/dsplus/system/vendor/lib/soundfx/libdseffect.so";
     if (load_effect_lib(libPath) != 0) {
         LOGE("failed to load effect library, exiting");
         return 1;

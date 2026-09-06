@@ -57,3 +57,33 @@ jobs:
           name: ${{ matrix.artifact_name }}-${{ matrix.abi }}
           path: ${{ steps.locate.outputs.path }}
           if-no-files-found: error
+
+  extract_libstdcpp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+
+      - name: Locate bundled libstdc++.so (armeabi-v7a)
+        id: locate
+        run: |
+          set -e
+          NDK=${{ steps.setup-ndk.outputs.ndk-path }}
+          OUT=$(find "$NDK" -path "*arm-linux-androideabi*" -name "libstdc++.so" | head -n1)
+          if [ -z "$OUT" ]; then
+            echo "libstdc++.so not found in this NDK; trying broader search"
+            OUT=$(find "$NDK" -iname "libstdc++*.so" | grep -i arm | grep -vi aarch64 | head -n1)
+          fi
+          echo "Found: $OUT"
+          file "$OUT" || true
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libstdc++.so-armeabi-v7a
+          path: ${{ steps.locate.outputs.path }}
+          if-no-files-found: error
