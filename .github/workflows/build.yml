@@ -87,3 +87,37 @@ jobs:
           name: libstdc++.so-armeabi-v7a
           path: ${{ steps.locate.outputs.path }}
           if-no-files-found: error
+
+  extract_real_gnu_libstdcpp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up OLD Android NDK (r16b, last release with real gnu-libstdc++)
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk-old
+        with:
+          ndk-version: r16b
+
+      - name: Locate real gnu-libstdc++ shared library (armeabi-v7a)
+        id: locate
+        run: |
+          set -e
+          NDK=${{ steps.setup-ndk-old.outputs.ndk-path }}
+          echo "NDK path: $NDK"
+          find "$NDK/sources/cxx-stl" -maxdepth 3 -type d || true
+          OUT=$(find "$NDK/sources/cxx-stl/gnu-libstdc++" -path "*armeabi-v7a*" -name "libgnustl_shared.so" | head -n1)
+          if [ -z "$OUT" ]; then
+            echo "libgnustl_shared.so not found, listing what IS there:"
+            find "$NDK/sources/cxx-stl" -iname "*.so" | grep -i "armeabi-v7a\|/arm/"
+            exit 1
+          fi
+          echo "Found: $OUT"
+          file "$OUT"
+          ls -la "$OUT"
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: real_libstdc++.so-armeabi-v7a
+          path: ${{ steps.locate.outputs.path }}
+          if-no-files-found: error
